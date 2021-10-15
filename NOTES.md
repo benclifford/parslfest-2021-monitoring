@@ -228,3 +228,32 @@ For each task, this shows state transitions as task execution progresses. For ex
 2021-10-15 09:14:10.665704    failed
 ```
 
+I'll walk through these states:
+
+- when an app is invoked, it is `pending`. It might not be possible to try to execute that app right away, because there might be uncompleted dependencies.
+- when all those dependencies are completed (and only then), parsl can compute the `task_hashsum` and decide if it should try to execute the app. In this example, it decided to try to execute the app, by passing the app to an executor and marking the task as `launched`. This means that the core of parsl has handed over responsibility of execution to an executor, which probably has its own queues, and its own policies. For example, when Work Queue tries to arrange tasks using resource descriptions, it can only do that with tasks that are `launched` - it has no idea about `pending` tasks.
+- eventually that task is run by the executor (perhaps after many hours of waiting in a queue), and the task is marked as `running`.
+- In this example, the task then fails. Parsl computes the retry cost, and in this case, it decides that the task can be retried. it is marked as `fail_retryable` to record that fact, and then goes back into the same pending/launched/running/fail sequence.
+- The third time round of this, after computing the retry cost, Parsl decides that this task shouldn't be retried any more - so the task goes to a final `failed` state, indicating that parsl is done with this task.
+
+Here's a simpler example of a regular one-try task execution:
+
+```
+2021-10-15 09:12:36.809534    pending
+2021-10-15 09:12:36.818164    launched
+2021-10-15 09:12:36.892969    running
+2021-10-15 09:12:37.011490    exec_done
+```
+
+The difference here is that instead of ending up `failed`, the final state is `exec_done`: the task is done successfully, by execution.
+
+Here's a really short state sequence when a task doesn't need executing because it has been checkpointed:
+
+```
+2021-10-15 09:12:46.708270|pending
+2021-10-15 09:12:46.717982|memo_done
+```
+
+Almost nothing happens: as soon as Parsl can check the parameters for checkpointing, the task goes to a final state of `memo_done`: the task is successfully done, because of memoization rather than because execution was tried.
+
+

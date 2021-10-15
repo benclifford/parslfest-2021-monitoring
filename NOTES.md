@@ -23,13 +23,7 @@ into rows in the database.
 * note that I'm talking about the `master` version of parsl - so what will
 become the next parsl release.
 
-* things i can mention in passing / of note / new features - retry "fuel" for tries
-(is that merged?)
 
-* checkpointing: what does the hashsum mean? especially:
-- how does it correlate tasks across runs - putting all stuff into one db means we can do stuff like that. and `hashsum` is the way to do it at task level
-- but - the hashsum can't be known until all of the inputs are ready - so a task can exist that will eventually get a hash sum but if it still has incomplete dependencies, then the hashsum will not be populated yet. This can be a bit confusing if the dependencies are being used for ordering of effectful/external computations, rather than for calculating parameters, and maybe its something we should look at in future: you know in your head that two tasks are the same, but parsl doesn't yet.
-- emphasise how task_ids don't align across runs - even though for some particular workflow patterns that might be the case.
 
 ## Initialising parsl
 
@@ -192,6 +186,8 @@ CREATE TABLE task (
 This is a hash of all of the input parameters: if I invoke an app twice with the same input parameters, then the two resulting tasks will have the same hashsum.
 
 This is one of the few places where it makes sense to make queries across workflow runs. If I see a task was not tried due to memoisation in a particular run, I can query across all runs to find all the other tasks with the same task_hashsum, and find any tries associated with all of those.
+
+In contrast to this, it's important to note that task_ids *don't* align between runs: task 3 in one run is not necessarily the "same" as task 3 in another workflow run (even though in certain sufficiently simple workflow patterns, that might be the case). When finding equivalent tasks between runs, use the `task_hashsum` not the `task_id`.
 
 ## status
 

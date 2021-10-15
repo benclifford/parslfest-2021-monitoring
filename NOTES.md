@@ -264,4 +264,26 @@ Next I'll talk about some other tables which contain information about the execu
 
 ## blocks
 
-Some executors in parsl follow the pattern of a pool of workers running on many nodes (for example, on a large HPC system) - for example the `HighThroughputExecutor` and the `WorkQueueExecutor`.
+Some executors in parsl follow the pattern of a pool of workers running on many nodes (for example, on a large HPC system) - for example the `HighThroughputExecutor` and the `WorkQueueExecutor`. The `ThreadPoolExecutor` does not follow this model - it isn't a core parsl requirement.
+
+For those executors, parsl can be configured to request worker nodes - this isn't a requirement - the worker nodes can come from somewhere else. For example, work queue comes with a work queue factory, so you have two options at least for automatic management of work queue workers.
+
+With those exceptions out of the way: parsl's worker scaling works by requesting blocks of workers from an underlying allocation system such as `slurm` or `kubernetes`: a block translates to some notion of job in the underlying system: for example for slurm, a block is a single slurm job; in kubernetes, a block is a kubernetes pod. This specialisation to each allocation system is done with parsl's `provider` abstraction: so there is a `SlurmProvider` and a `KubernetesProvider`, among others.
+
+Parsl block information is stored in the `block` table:
+
+```sql
+CREATE TABLE block (
+	run_id TEXT NOT NULL, 
+	executor_label TEXT NOT NULL, 
+	block_id TEXT NOT NULL, 
+	job_id TEXT, 
+	timestamp DATETIME NOT NULL, 
+	status TEXT NOT NULL, 
+	PRIMARY KEY (run_id, block_id, executor_label, timestamp)
+);
+```
+
+A block is uniquely identified by the combination of the run_id, executor_label and the block_id. The executor_label is the user configured executor name and the block_id is a sequence number.
+
+Parsl regularly polls for block status, via the relevant provider, and records a row in this table for each poll - usually the status sequence is `PENDING` to `RUNNING` to `CANCELLED`: pending meaning that a request has been submitted to the underlying allocation system, running meaning that the block is now running.

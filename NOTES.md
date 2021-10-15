@@ -256,4 +256,12 @@ Here's a really short state sequence when a task doesn't need executing because 
 
 Almost nothing happens: as soon as Parsl can check the parameters for checkpointing, the task goes to a final state of `memo_done`: the task is successfully done, because of memoization rather than because execution was tried.
 
+## summary so far
 
+Those four tables: workflow, task, try and status form a tree of information about app invocations.
+
+Next I'll talk about some other tables which contain information about the execution environment.
+
+## blocks
+
+Some executors in parsl follow the pattern of a pool of workers running on many nodes (for example, on a large HPC system) - for example the `HighThroughputExecutor` and the `WorkQueueExecutor`.
